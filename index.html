@@ -3705,6 +3705,15 @@ function beep(f,ms){ if(!S.sound) return; try{ ensureAudio(); if(!AC) return;
 const CD_START=10;              // countdown begins 10s out
 let schedB={key:null, nodes:[]};
 function toneMul(){ return ({deep:0.72, std:1, bright:1.35})[S.tone||'std']||1; }
+// Run a sound AFTER the context is truly awake. resume() is async, so checking
+// AC.state synchronously right after ensureAudio() skips the play on exactly the tap
+// that woke the system - the sound-picker previews were silent for precisely this reason.
+function audioReady(cb){ try{
+  ensureAudio(); if(!AC) return;
+  if(AC.state==='running'){ cb(); return; }
+  var p=AC.resume();
+  if(p&&p.then) p.then(function(){ try{ if(AC.state==='running') cb(); }catch(e){} }).catch(function(){});
+}catch(e){} }
 function toneAt(freq, dur, when, gain, type){
   if(!AC) return null;
   try{
@@ -4492,12 +4501,13 @@ function wire(){
   document.querySelectorAll('[data-uimode]').forEach(b=>b.onclick=()=>{ S.uiMode=b.dataset.uimode; save(); render(); });
   document.querySelectorAll('[data-howto]').forEach(b=>b.onclick=()=>{ var i2=+b.dataset.howto; howtoOpen[i2]=!howtoOpen[i2]; render(); });
   document.querySelectorAll('[data-radj]').forEach(b=>b.onclick=()=>{ S.restAdj=+b.dataset.radj; save(); render(); });
-  document.querySelectorAll('[data-tone]').forEach(b=>b.onclick=()=>{ S.tone=b.dataset.tone; save(); render(); try{ ensureAudio(); if(AC&&AC.state==='running') toneAt(SND().tick.f,0.12,AC.currentTime+0.01,0.28,SND().tick.w); }catch(e){} });
+  document.querySelectorAll('[data-tone]').forEach(b=>b.onclick=()=>{ S.tone=b.dataset.tone; save(); render();
+    audioReady(function(){ toneAt(SND().tick.f,0.12,AC.currentTime+0.01,0.28,SND().tick.w); }); });
   document.querySelectorAll('[data-snd]').forEach(b=>b.onclick=()=>{ S.snd=b.dataset.snd; save(); render();
-    try{ ensureAudio(); if(AC&&AC.state==='running'){ const V=SND(), t0=AC.currentTime+0.01;
+    audioReady(function(){ const V=SND(), t0=AC.currentTime+0.01;
       toneAt(V.tick.f,V.tick.d,t0,V.tick.g,V.tick.w);
       V.go.forEach(function(t){ toneAt(t[0],t[1],t0+0.5+t[2],Math.max(0.42,V.tick.g+0.12),V.gw); });
-    } }catch(e){} });
+    }); });
   document.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>{ S.jump=+b.dataset.jump; save(); render(); });
   document.querySelectorAll('[data-brth]').forEach(b=>b.onclick=()=>{ S.breathe=!!(+b.dataset.brth); save(); render(); });
   // profile identity: display-first; editing is an explicit mode with Save/Cancel
