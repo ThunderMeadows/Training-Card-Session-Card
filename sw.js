@@ -1,6 +1,6 @@
 // Cache-first for the app shell: once installed it opens instantly and works with no signal,
 // which matters in a gym basement. Bump CACHE when you deploy and old copies clear themselves.
-const CACHE = 'card-d67945a62c97';
+const CACHE = 'card-842dbf34e3f6';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
